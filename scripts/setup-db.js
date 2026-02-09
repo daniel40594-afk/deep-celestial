@@ -1,11 +1,8 @@
-const { Pool } = require('pg');
+const { Pool } = require('@neondatabase/serverless');
 require('dotenv').config({ path: '.env.local' });
 
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: {
-        rejectUnauthorized: false
-    }
+  connectionString: process.env.DATABASE_URL,
 });
 
 const createTableQuery = `
@@ -26,19 +23,20 @@ const seedAdminQuery = `
 `;
 
 async function setup() {
-    try {
-        console.log('Creating users table...');
-        await pool.query(createTableQuery);
-        console.log('Table created successfully.');
+  try {
+    console.log('Connecting to Neon via WebSockets...');
+    console.log('Creating users table...');
+    await pool.query(createTableQuery);
+    console.log('Table created successfully.');
 
-        // Optional: Seed admin (would need a real hash)
-        // await pool.query(seedAdminQuery);
+    // Optional: Seed admin (would need a real hash)
+    // await pool.query(seedAdminQuery);
 
-    } catch (error) {
-        console.error('Error setup database:', error);
-    } finally {
-        await pool.end();
-    }
+  } catch (error) {
+    console.error('Error setup database:', error);
+  } finally {
+    await pool.end();
+  }
 }
 
 setup();
