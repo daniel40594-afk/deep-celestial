@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { YoutubeTranscript } from 'youtube-transcript';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 
-// Initialize Gemini API
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+// Initialize OpenAI client for OpenRouter
+const openai = new OpenAI({
+    baseURL: 'https://openrouter.ai/api/v1',
+    apiKey: process.env.OPENROUTER_API_KEY || '',
+});
 
 export async function POST(request: Request) {
     try {
@@ -30,44 +33,46 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Could not fetch video transcript. The video might not have captions enabled.' }, { status: 422 });
         }
 
-        // 3. Generate Summary & Notes with Gemini
-        if (!process.env.GEMINI_API_KEY) {
-            return NextResponse.json({ error: 'Gemini API Key is not configured' }, { status: 500 });
+        // 3. Generate Summary & Notes with OpenRouter (Gemini)
+        if (!process.env.OPENROUTER_API_KEY) {
+            return NextResponse.json({ error: 'OpenRouter API Key is not configured' }, { status: 500 });
         }
 
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const completion = await openai.chat.completions.create({
+            model: 'google/gemini-2.0-flash-lite-preview-02-05:free', // Use a free/cheap model
+            messages: [
+                {
+                    role: 'system',
+                    content: `You are an expert AI tutor. Your goal is to generate structured study notes from the provided video transcript.
+          Output Format (JSON):
+          {
+            "summary": "A comprehensive summary of the video (2-3 paragraphs)",
+            "studyNotes": "Markdown formatted study notes with headings, bullet points, and key concepts."
+          }
+          Ensure the study notes are detailed, easy to understand, and capturing the core essence of the video. Return ONLY the JSON.`
+                },
+                {
+                    role: 'user',
+                    content: `Transcript: "${transcriptText.substring(0, 30000)}"`
+                }
+            ],
+            response_format: { type: 'json_object' }
+        });
 
-        const prompt = `
-      You are an expert AI tutor. Your goal is to generate structured study notes from the following video transcript.
-      
-      Transcript:
-      "${transcriptText.substring(0, 30000)}" // Limit to ~30k chars to stay within safe token limits for Flash 1.5 if transcript is huge.
-      
-      Output Format (JSON):
-      {
-        "summary": "A comprehensive summary of the video (2-3 paragraphs)",
-        "studyNotes": "Markdown formatted study notes with headings, bullet points, and key concepts."
-      }
-      
-      Ensure the study notes are detailed, easy to understand, and capturing the core essence of the video. Return ONLY the JSON.
-    `;
+        const content = completion.choices[0].message.content;
 
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
-
-        // Clean up JSON if wrapped in markdown code blocks
-        const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        if (!content) {
+            throw new Error('No content received from AI');
+        }
 
         try {
-            const data = JSON.parse(cleanJson);
+            const data = JSON.parse(content);
             return NextResponse.json(data);
         } catch (e) {
             console.error('JSON parsing error', e);
-            // Fallback if AI didn't return valid JSON
             return NextResponse.json({
                 summary: "Error parsing AI response.",
-                studyNotes: text // Return raw text as notes
+                studyNotes: content
             });
         }
 
