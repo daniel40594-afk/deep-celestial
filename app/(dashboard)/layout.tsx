@@ -24,11 +24,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="min-h-screen bg-gray-50/50">
             <nav className="border-b bg-white px-4 py-3 sm:px-6">
                 <div className="flex items-center justify-between mx-auto max-w-7xl">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-6">
                         <Link href="/" className="flex items-center gap-2 font-bold text-xl text-indigo-600">
                             <LayoutDashboard className="h-6 w-6" />
                             <span>RBAC Dash</span>
                         </Link>
+                        <nav className="hidden md:flex items-center gap-4">
+                            <Link href="/user" className="text-sm font-medium text-gray-500 hover:text-gray-900">Dashboard</Link>
+                            <Link href="/study" className="text-sm font-medium text-gray-500 hover:text-gray-900">AI Study Tool</Link>
+                        </nav>
                     </div>
                     <div className="flex items-center gap-2">
                         <div className="hidden sm:flex items-center gap-2 text-sm text-gray-500 mr-4">
